@@ -81,7 +81,7 @@ fi
 # which /sys/class/hwmon symlink points to the intel coretemp sensors
 hwmon_coretemp="/sys/class/hwmon/"`ls -lQ /sys/class/hwmon | grep -i coretemp | cut -d "\"" -f 2`
 if [ $debug -gt 1 ]; then
-   echo "STARUP: hwmon_coretemp=" $hwmon_coretemp
+   echo "STARTUP: hwmon_coretemp=" $hwmon_coretemp
 fi
 
 # which /sys/class/hwmon symlink points to the acpi sensors ( board temperature sensor )
