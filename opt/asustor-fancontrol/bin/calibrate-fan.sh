@@ -6,8 +6,9 @@
 
 set -e
 
-# Configuration
-HWMON_IT87="/sys/class/hwmon/hwmon4"
+# Auto-detect hwmon paths (same as temp_monitor.sh)
+HWMON_IT87="/sys/class/hwmon/"`ls -lQ /sys/class/hwmon | grep -i it87 | cut -d "\"" -f 2`
+
 PWM_FILE="$HWMON_IT87/pwm1"
 FAN_FILE="$HWMON_IT87/fan1_input"
 OUTPUT_FILE="/tmp/fan-calibration-$(date +%Y%m%d-%H%M%S).csv"
@@ -24,14 +25,25 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-# Verify hwmon device exists
+# Verify hwmon device was detected
+if [ -z "$HWMON_IT87" ]; then
+    echo -e "${RED}ERROR: Could not auto-detect it8625 hwmon device${NC}"
+    echo "Make sure asustor_it87 kernel module is loaded:"
+    echo "  lsmod | grep asustor_it87"
+    exit 1
+fi
+
+# Verify hwmon files exist
 if [ ! -f "$PWM_FILE" ] || [ ! -f "$FAN_FILE" ]; then
-    echo -e "${RED}ERROR: Cannot find $HWMON_IT87/pwm1 or $HWMON_IT87/fan1_input${NC}"
-    echo "Make sure asustor_it87 kernel module is loaded: lsmod | grep asustor_it87"
+    echo -e "${RED}ERROR: Cannot find pwm/fan files${NC}"
+    echo "  Detected: $HWMON_IT87"
+    echo "  PWM_FILE: $PWM_FILE"
+    echo "  FAN_FILE: $FAN_FILE"
     exit 1
 fi
 
 echo -e "${GREEN}=== Asustor Fan PWM to RPM Calibration ===${NC}"
+echo "Detected it8625 device at: $HWMON_IT87"
 echo "This script will test different PWM values and record fan RPM."
 echo "Output will be saved to: $OUTPUT_FILE"
 echo ""
