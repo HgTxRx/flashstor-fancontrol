@@ -7,10 +7,10 @@
 
 set -e
 
-# Configuration
-HWMON_IT87="/sys/class/hwmon/hwmon4"
-HWMON_CORETEMP="/sys/class/hwmon/hwmon5"
-HWMON_ACPI="/sys/class/hwmon/hwmon0"
+# Auto-detect hwmon paths (same as temp_monitor.sh)
+HWMON_ACPI="/sys/class/hwmon/"`ls -lQ /sys/class/hwmon | grep -i thermal_zone0 | cut -d "\"" -f 2`
+HWMON_IT87="/sys/class/hwmon/"`ls -lQ /sys/class/hwmon | grep -i it87 | cut -d "\"" -f 2`
+HWMON_CORETEMP="/sys/class/hwmon/"`ls -lQ /sys/class/hwmon | grep -i coretemp | cut -d "\"" -f 2`
 
 PWM_FILE="$HWMON_IT87/pwm1"
 FAN_FILE="$HWMON_IT87/fan1_input"
@@ -74,10 +74,28 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-# Verify hwmon devices exist
+# Verify hwmon devices were detected
+if [ -z "$HWMON_IT87" ] || [ -z "$HWMON_CORETEMP" ] || [ -z "$HWMON_ACPI" ]; then
+    echo -e "${RED}ERROR: Could not auto-detect hwmon devices${NC}"
+    echo "Make sure asustor_it87 kernel module is loaded:"
+    echo "  lsmod | grep asustor_it87"
+    exit 1
+fi
+
+# Verify hwmon files exist
 if [ ! -f "$PWM_FILE" ] || [ ! -f "$FAN_FILE" ]; then
-    echo -e "${RED}ERROR: Cannot find hwmon files${NC}"
-    echo "Make sure asustor_it87 kernel module is loaded: lsmod | grep asustor_it87"
+    echo -e "${RED}ERROR: Cannot find pwm/fan files${NC}"
+    echo "  PWM_FILE: $PWM_FILE"
+    echo "  FAN_FILE: $FAN_FILE"
+    echo "Check with: ls -la /sys/class/hwmon/hwmon*/pwm1"
+    exit 1
+fi
+
+# Verify temperature files exist
+if [ ! -f "$HWMON_CORETEMP/temp1_input" ] || [ ! -f "$HWMON_ACPI/temp1_input" ]; then
+    echo -e "${RED}ERROR: Cannot find temperature sensor files${NC}"
+    echo "  CORETEMP: $HWMON_CORETEMP/temp*_input"
+    echo "  ACPI: $HWMON_ACPI/temp1_input"
     exit 1
 fi
 
@@ -116,6 +134,11 @@ if [ "$DURATION" -eq 0 ]; then
 else
     echo "Duration: ${DURATION}s"
 fi
+echo ""
+echo -e "${YELLOW}Detected hwmon devices:${NC}"
+echo "  IT87 (Fan): $HWMON_IT87"
+echo "  CoreTemp (CPU): $HWMON_CORETEMP"
+echo "  ACPI (Board): $HWMON_ACPI"
 echo ""
 echo -e "${YELLOW}NVMe devices detected: ${#NVME_DEVICES[@]}${NC}"
 for ((j=0; j<${#NVME_DEVICES[@]}; j++)); do
