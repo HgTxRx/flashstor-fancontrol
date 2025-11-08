@@ -1,0 +1,15 @@
+[Unit]
+Description=Asustor IT87 Kernel Module Setup
+Before=asustor-fancontrol-monitor.service
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/admin/check_asustor_it87.kmod.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+User=root
+
+[Install]
+WantedBy=multi-user.target
